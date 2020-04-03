@@ -65,21 +65,73 @@ Ceci illustre bien l'intérêt d'un algorithme de voyageur de commerce. Nous all
 Nombre de sommets fixes et graphes "identiques".
 
 ```{r, echo=TRUE}
-      n <- 10
-sommets <- data.frame(x = runif(n), y = runif(n))
+nb_essais <- 5
+d_hamil <- matrix(0,nrow=nb_essais,ncol=5)
+for (i in 1:nb_essais) {
+  n <- 10
+  sommets <- data.frame(x = runif(n), y = runif(n))
   couts <- distance(sommets)
+  d_hamil[i, 1] <- TSPsolve(couts, 'repetitive_nn')
+  d_hamil[i, 2] <- TSPsolve(couts, 'nearest_insertion')
+  d_hamil[i, 3] <- TSPsolve(couts, 'two_opt')
+  d_hamil[i, 4] <- TSPsolve(couts, 'nearest')
+  d_hamil[i, 5] <- TSPsolve(couts, 'branch')
+}
+colnames(d_hamil) <- c('Rep nn','Nearest i','Two opt','Nearest','Branch')
+par(mfrow=c(1,1))
+boxplot(d_hamil)
+
 ```
 
 ## 1.1. Longueur des chemins
 
 Comparaison des longueurs de différentes méthodes : 
 
-   * boxplots
+### Boxplots
 
-   * test entre 'nearest' et 'branch'
+```{r, echo=TRUE}
+nb_essais <- 50
+d_hamil <- matrix(0,nrow=nb_essais,ncol=5)
+for (i in 1:nb_essais) {
+  n <- 10
+  sommets <- data.frame(x = runif(n), y = runif(n))
+  couts <- distance(sommets)
+  d_hamil[i, 1] <- TSPsolve(couts, 'repetitive_nn')
+  d_hamil[i, 2] <- TSPsolve(couts, 'nearest_insertion')
+  d_hamil[i, 3] <- TSPsolve(couts, 'two_opt')
+  d_hamil[i, 4] <- TSPsolve(couts, 'nearest')
+  d_hamil[i, 5] <- TSPsolve(couts, 'branch')
+}
+colnames(d_hamil) <- c('Rep nn','Nearest i','Two opt','Nearest','Branch')
+par(mfrow=c(1,1))
+boxplot(d_hamil)
+
+```
+
+### Test entre 'nearest' et 'branch'
+
+```{r, echo=TRUE}
+htest = t.test(d_hamil[,4], d_hamil[,5], paired=TRUE)
+# p_valeur <= 5 e-10 => On peut rejetter H0 avec certitude => H1 est admissible => mmnn -mmb > 0, branch and bound trouve une meilleure chemin optimale que nearest neighbour
+
+```
+
+
 
    * tests 2 à 2 
-
+```{r, echo=TRUE}
+methods <- matrix(0,nrow=nb_essais,ncol=5)
+for (i in 1:nb_essais) {
+  methods[i, 1] <- 'repetitive_nn'
+  methods[i, 2] <- 'nearest_insertion'
+  methods[i, 3] <- 'two_opt'
+  methods[i, 4] <- 'nearest'
+  methods[i, 5] <- 'branch'
+}
+m_results<-as.vector(d_hamil)
+m_methods<-as.vector(methods)
+pairwise.t.test(m_results, m_methods,adjust.method='bonferroni',paired=TRUE)
+```
 
 ## 1.2. Temps de calcul
 

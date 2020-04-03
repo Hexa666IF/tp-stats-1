@@ -1,6 +1,6 @@
 # Rendered files
-*.pdf
-*.html
+# *.pdf
+# *.html
 
 # Subject files
 Help

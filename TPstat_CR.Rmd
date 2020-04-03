@@ -1,7 +1,7 @@
 ---
 pathOpt <- c(1,8,9,4,21,13,7,10,3,17,16,20,6,19,15,18,11,5,22,14,12,2)---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, cache = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
 ## il est possible qu'avant d'installer le package TSPpackage vous deviez installer ou ré-installer Rcpp
@@ -21,26 +21,21 @@ library(TSPpackage)
 ## Fixer la graine
 set.seed(420)
 ```
-Voici le plan de ce qui sera fait dans le TP.
 
 # 0. Visualisation de chemins
 
-Lecture du fichier des villes :
+Lecture du fichier des villes de la France:
 
 ```{r, echo=TRUE}
 villes <- read.csv('Data/DonneesGPSvilles.csv',header=TRUE,dec='.',sep=';',quote="\"")
 ```
+
 Représentation des chemins par plus proches voisins et du chemin optimal :
 ```{r, echo=TRUE}
 coord <- cbind(villes$longitude,villes$latitude)
 dist <- distanceGPS(coord)
 voisins <- TSPnearest(dist)
-
-# hamiltonien <- TSPsolve(dist,'branch')
-# str(hamiltonien)
-
 pathOpt <- c(1,8,9,4,21,13,7,10,3,17,16,20,6,19,15,18,11,5,22,14,12,2)
-# mfrow=c(row,column)
 par(mfrow=c(1,2),mar=c(1,1,2,1))
 plotTrace(coord[voisins$chemin,], title='Plus proches voisins')
 plotTrace(coord[pathOpt,], title='Chemin optimal')
@@ -51,16 +46,22 @@ Les longueurs des trajets (à vol d'oiseau) valent respectivement, pour la méth
 ```{r, echo=FALSE}
 voisins$longueur
 ```
+pour la méthode branch and bound :
+```{r, echo=FALSE}
+TSPsolve(dist,'branch')
+```
 et pour la méthode optimale :
 ```{r, echo=FALSE}
 calculeLongueur(dist,pathOpt)
 ```
 
+Nous voyons clairement que la méthode de plus proches voisins trouve un chemin moins optimal que la méthode branch and bound. De plus le chemin trouvé par cette méthode est bien plus long que le chemin optimale.
 Ceci illustre bien l'intérêt d'un algorithme de voyageur de commerce. Nous allons dans la suite étudier les performances de cet algorithme.
 
 
 # 1. Comparaison d'algorithmes
 
+Nous allons comparer
 Nombre de sommets fixes et graphes "identiques".
 
 ```{r, echo=TRUE}
@@ -183,14 +184,16 @@ matplot(seqn, log(temps)^2, xlab='n', ylab=expression(log(temps)^2))
 ```
 
 Ajustement du modèle linéaire de $\log(temps)^2$ en fonction de $n$.
-```{r, echo=true}
+Adding random text here
+
+```{r, echo=TRUE}
 vect_temps <- log(as.vector(temps))^2
 vect_dim <- rep(seqn,times=10)
 temps.lm <- lm(vect_temps ~ vect_dim)
 summary(temps.lm)
 ```
 Etude graphique des analyse de résidus.
-```{r, echo=true}
+```{r, echo=TRUE}
 par(mfrow=c(2,2)) # 4 graphiques, sur 2 lignes et 2 colonnes
 plot(temps.lm)
 
@@ -230,14 +233,14 @@ matplot(seqn, log(temps_moy)^2, xlab='n', ylab=expression(log(temps_moy)^2))
 #le temps de calcul évolue de manière exponentielle en fonction de n, nous allons donc plutôt utiliser le gogarithme du temps de calcul pour se ramener à une répartition linéaire
 ```
 Ajustement du modèle linéaire de $\log(temps)^2$ en fonction de $n$.
-```{r, echo=true}
+```{r, echo=TRUE}
 vect_temps_moy <- log(as.vector(temps_moy))^2
 vect_dim_moy <- rep(seqn,1)
 temps_moy.lm <- lm(vect_temps_moy ~ vect_dim_moy)
 summary(temps_moy.lm)
 ```
 Etude graphique des analyse de résidus.
-```{r, echo=true}
+```{r, echo=TRUE}
 par(mfrow=c(2,2)) # 4 graphiques, sur 2 lignes et 2 colonnes
 plot(temps_moy.lm)
 
@@ -267,7 +270,7 @@ Analyse de la validité du modèle :
   
   * étude des hypothèses sur les résidus.
   
-```{r, echo=true}
+```{r, echo=TRUE}
 data.graph <- data.frame(read.csv('Data/DonneesTSP.csv',header=TRUE,dec='.',sep=',',quote="\""))
 # dataset_columns <- c("dim", "mean.long","mean.dist", "sd.dist", "mean.deg", "sd.deg", "diameter")
 data.graph$dim <- sqrt(data.graph$dim)
@@ -280,7 +283,7 @@ plot(temps_tsp.lm)
 shapiro.test(residuals(temps_tsp.lm))
 ```
 Elimlination des variables non significatives
-```{r, echo=true}
+```{r, echo=TRUE}
 summary(step(temps_tsp.lm))
 par(mfrow=c(2,2)) # 4 graphiques, sur 2 lignes et 2 colonnes
 plot(step(temps_tsp.lm))

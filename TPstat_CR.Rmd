@@ -29,7 +29,6 @@ Lecture du fichier des villes :
 
 ```{r, echo=TRUE}
 villes <- read.csv('Data/DonneesGPSvilles.csv',header=TRUE,dec='.',sep=';',quote="\"")
-str(villes)
 ```
 Représentation des chemins par plus proches voisins et du chemin optimal :
 ```{r, echo=TRUE}
@@ -130,16 +129,33 @@ for (i in 1:nb_essais) {
 }
 m_results<-as.vector(d_hamil)
 m_methods<-as.vector(methods)
-pairwise.t.test(m_results, m_methods,adjust.method='bonferroni',paired=TRUE)
-```
+pairwise.t.test(m_results, m_methods,adjust.method='bonferroni', paired=T)
 
+#faire les deux tests sans paired=TRUE et avec
+#sans paired=TRUE : juste et on peut faire une analyse comparative 2 à 2, on obtient des résultats qui montrent qu'un certains nombre d'algorithmes sont équivalents, quelques avantages significatifs de branch et bound tout de même, sauf pour nn
+#avec paired=TRUE : ce paramètre est admisible car nous avons construits nos résultats de chemins hamiltoniens en utilisant les mêmes valeurs pour les 5 algorithmes à chaque fois. Il est ici pertiennt d'utiliser ce paramètre et nous obtenons de meilleurs résultats !
+#ici nous pouvons dire que branch and bound est meilleur que tous les autres algorithmes pour le calcul du chemin hamiltonien optimal. Finalement, nous obtenons que deux algo seulement sont équivalents : two_opt/nearest et two_opt```
+```
 ## 1.2. Temps de calcul
 
 Comparaison des temps à l'aide du package microbenchmark.
 
 Exemple d'application de microbenchmark :
 ```{r, echo=TRUE}
-microbenchmark(sqrt(x),x^0.5, times=100, setup={x <- runif(1)})
+
+# temps <- matrix(0,nrow=17,ncol=5)
+  
+microbenchmark(TSPsolve(couts, 'repetitive_nn'),TSPsolve(couts, 'nearest'),TSPsolve(couts, 'nearest_insertion'),TSPsolve(couts, 'branch'),TSPsolve(couts, 'two_opt'), times=20, unit="ms", setup={sommets<- data.frame(x = runif(n), y = runif(n))
+couts <- distance(sommets)})
+
+#nous obtenons les résultats suivants à l'exécution :
+# repretitive_nn : d
+# nearest : a
+# nearest_insertion : b
+# branch : c
+# two_opt : ab
+# Si branch and bound est donc assez clairement le meilleur algorithme de calcul de chemin hamiltionien optimal, il est donc loin d'être le plus rapide. Le plus lent restant quand même repetitive_nn.
+# Il est intéressant de remarquer ici que nearest et nearest_insertion ne sont pas aussi rapides l'un que l'autre, pourtant, la vitesse d'exécution de two_opt est comparable à celle de nearest et à celle de nearest_insertion ! Toutefois, d'une exécution à l'autre, le temps de calcul peut changer et il sera donc tout à fait possible d'obtenir soit seulement a, soit seulement b pour two_opt
 ```
 
 # 2. Etude e la complexité de l'algorithme Branch and Bound
@@ -147,8 +163,40 @@ microbenchmark(sqrt(x),x^0.5, times=100, setup={x <- runif(1)})
 ## 2.1. Comportement par rapport au nombre de sommets : premier modèle
 
 Récupération du temps sur 10 graphes pour différentes valeurs de $n$.
+```{r, echo=TRUE}
+seqn <- seq(4,20,1)
+times <- 10
+temps <- matrix(0,nrow=length(seqn),ncol=times)
+
+for (i in 1:length(seqn)) {
+  temps[i,]<- t(microbenchmark(TSPsolve(couts, method = 'branch'),
+  times = times,
+  setup = { n <- seqn[i]
+            couts <- distance(cbind(x = runif(n), y = runif(n)))}
+  )$time)
+}
+par(mfrow=c(2,2)) # 2 graphiques sur 1 ligne
+# par(mfrow=c(1,2)) # 2 graphiques sur 1 ligne
+matplot(seqn, temps, xlab='n', ylab='temps')
+matplot(seqn, log(temps)^2, xlab='n', ylab=expression(log(temps)^2))
+#le temps de calcul évolue de manière exponentielle en fonction de n, nous allons donc plutôt utiliser le gogarithme du temps de calcul pour se ramener à une répartition linéaire
+```
 
 Ajustement du modèle linéaire de $\log(temps)^2$ en fonction de $n$.
+```{r, echo=true}
+vect_temps <- log(as.vector(temps))^2
+vect_dim <- rep(seqn,times=10)
+temps.lm <- lm(vect_temps ~ vect_dim)
+summary(temps.lm)
+```
+Etude graphique des analyse de résidus.
+```{r, echo=true}
+par(mfrow=c(2,2)) # 4 graphiques, sur 2 lignes et 2 colonnes
+plot(temps.lm)
+
+shapiro.test(residuals(temps.lm))
+#on fait le test de shapiro car les extremités de notre Normal Q-Q modèle s'éloigent de la bisectrice, on obtient ici pour une exécution p-value=0.01463 par exemple. C'est une valeur très petite, on rejette la loi normale.
+```
 
 Analyse de la validité du modèle : 
 
@@ -161,6 +209,42 @@ Analyse de la validité du modèle :
 Récupération du temps moyen.
 
 Ajustement du modèle linéaire de $\log(temps.moy)^2$ en fonction de $n$.
+```{r, echo=TRUE}
+seqn <- seq(4,20,1)
+times <- 10
+temps <- matrix(0,nrow=length(seqn),ncol=times)
+
+
+for (i in 1:length(seqn)) {
+  temps[i,]<- t(microbenchmark(TSPsolve(couts, method = 'branch'),
+  times = times,
+  setup = { n <- seqn[i]
+            couts <- distance(cbind(x = runif(n), y = runif(n)))}
+  )$time)
+}
+temps_moy <- rowMeans(temps)
+par(mfrow=c(2,2)) # 2 graphiques sur 1 ligne
+# par(mfrow=c(1,2)) # 2 graphiques sur 1 ligne
+matplot(seqn, temps_moy, xlab='n', ylab='temps.moy')
+matplot(seqn, log(temps_moy)^2, xlab='n', ylab=expression(log(temps_moy)^2))
+#le temps de calcul évolue de manière exponentielle en fonction de n, nous allons donc plutôt utiliser le gogarithme du temps de calcul pour se ramener à une répartition linéaire
+```
+Ajustement du modèle linéaire de $\log(temps)^2$ en fonction de $n$.
+```{r, echo=true}
+vect_temps_moy <- log(as.vector(temps_moy))^2
+vect_dim_moy <- rep(seqn,1)
+temps_moy.lm <- lm(vect_temps_moy ~ vect_dim_moy)
+summary(temps_moy.lm)
+```
+Etude graphique des analyse de résidus.
+```{r, echo=true}
+par(mfrow=c(2,2)) # 4 graphiques, sur 2 lignes et 2 colonnes
+plot(temps_moy.lm)
+
+shapiro.test(residuals(temps_moy.lm))
+#
+```
+
 
 Analyse de la validité du modèle : 
 
@@ -182,4 +266,26 @@ Analyse de la validité du modèle :
   * pertinence des coefficients et du modèle, 
   
   * étude des hypothèses sur les résidus.
+  
+```{r, echo=true}
+data.graph <- data.frame(read.csv('Data/DonneesTSP.csv',header=TRUE,dec='.',sep=',',quote="\""))
+# dataset_columns <- c("dim", "mean.long","mean.dist", "sd.dist", "mean.deg", "sd.deg", "diameter")
+data.graph$dim <- sqrt(data.graph$dim)
+temps_tsp.lm <- lm(log(tps) ~ ., data=data.graph)
+
+summary(temps_tsp.lm)
+par(mfrow=c(2,2)) # 4 graphiques, sur 2 lignes et 2 colonnes
+plot(temps_tsp.lm)
+
+shapiro.test(residuals(temps_tsp.lm))
+```
+Elimlination des variables non significatives
+```{r, echo=true}
+summary(step(temps_tsp.lm))
+par(mfrow=c(2,2)) # 4 graphiques, sur 2 lignes et 2 colonnes
+plot(step(temps_tsp.lm))
+
+shapiro.test(residuals(step(temps_tsp.lm)))
+```
+  
 
